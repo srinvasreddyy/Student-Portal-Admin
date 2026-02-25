@@ -45,6 +45,8 @@ const CompanyRegister = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [domainVerified, setDomainVerified] = useState(false);
+    const [otpCode, setOtpCode] = useState('');
+    const [registeredUserId, setRegisteredUserId] = useState(null);
 
     // For Global Search
     const [searchQuery, setSearchQuery] = useState('');
@@ -105,10 +107,32 @@ const CompanyRegister = () => {
         if (!domainVerified) return setError('Please verify your domain first');
         setLoading(true); setError('');
         try {
-            await companyApi.register(formData);
-            setStep(5); // Success step
+            const result = await companyApi.register(formData);
+            if (result.data.success) {
+                // Try logging the user in directly to obtain the token so we can hit /auth/verify-email
+                const loginRes = await authApi.login({ email: formData.officialEmail, password: formData.password });
+                localStorage.setItem('accessToken', loginRes.data.tokens.accessToken);
+                localStorage.setItem('refreshToken', loginRes.data.tokens.refreshToken);
+                setStep(5); // Move to OTP input step
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerifyOtp = async (e) => {
+        e.preventDefault();
+        setLoading(true); setError('');
+        try {
+            // Need accessToken to hit /auth/verify-email natively
+            const res = await companyApi.verifyDomain({ email: formData.officialEmail }); // Just dummy to show
+            // The real route is authApi.verifyEmail which sends the header
+            await authApi.verifyEmail({ code: otpCode });
+            setStep(6); // Success page
+        } catch (err) {
+            setError(err.response?.data?.message || 'Verification failed. Incorrect OTP.');
         } finally {
             setLoading(false);
         }
@@ -123,7 +147,8 @@ const CompanyRegister = () => {
                     {step === 2 && 'Find Organization'}
                     {step === 3 && 'Representative Details'}
                     {step === 4 && 'Domain Verification'}
-                    {step === 5 && 'Registration Complete'}
+                    {step === 5 && 'Verify Email OTP'}
+                    {step === 6 && 'Registration Complete'}
                 </h2>
             </div>
 
@@ -225,6 +250,14 @@ const CompanyRegister = () => {
                             </div>
                         </div>
                         <div className="form-group">
+                            <label>Official Work Email</label>
+                            <div className="input-wrapper">
+                                <Mail size={18} />
+                                <input type="email" placeholder="name@company.com" value={formData.officialEmail} onChange={(e) => { setFormData({ ...formData, officialEmail: e.target.value }); setDomainVerified(false); }} required />
+                            </div>
+                            <small style={{ color: 'var(--text-secondary)', marginTop: '0.5rem', display: 'block' }}>Must be an organization email (no Gmail/Yahoo).</small>
+                        </div>
+                        <div className="form-group">
                             <label>Create Password</label>
                             <div className="input-wrapper">
                                 <ShieldCheck size={18} />
@@ -247,14 +280,6 @@ const CompanyRegister = () => {
                                 <input type="url" placeholder="https://company.com" value={formData.website} onChange={(e) => { setFormData({ ...formData, website: e.target.value }); setDomainVerified(false); }} required />
                             </div>
                         </div>
-                        <div className="form-group">
-                            <label>Official Work Email</label>
-                            <div className="input-wrapper">
-                                <Mail size={18} />
-                                <input type="email" placeholder="name@company.com" value={formData.officialEmail} onChange={(e) => { setFormData({ ...formData, officialEmail: e.target.value }); setDomainVerified(false); }} required />
-                            </div>
-                            <small style={{ color: 'var(--text-secondary)', marginTop: '0.5rem', display: 'block' }}>Email domain must match website domain. Public emails (Gmail, etc) are rejected.</small>
-                        </div>
 
                         <div style={{ margin: '1.5rem 0' }}>
                             <button onClick={handleVerifyDomain} disabled={loading || domainVerified} className="btn-auth" style={{ background: domainVerified ? 'var(--success)' : 'var(--primary)' }}>
@@ -272,13 +297,35 @@ const CompanyRegister = () => {
                 )}
 
                 {step === 5 && (
-                    <motion.div key="s5" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: 'center' }}>
+                    <motion.form key="s5" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} onSubmit={handleVerifyOtp} style={{ textAlign: 'center' }}>
+                        <div style={{ color: 'var(--primary)', marginBottom: '1.5rem' }}><Mail size={64} style={{ margin: '0 auto' }} /></div>
+                        <h3>Check Your Email</h3>
+                        <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
+                            We sent a 6-digit confirmation code to <strong>{formData.officialEmail}</strong>.
+                        </p>
+
+                        <div className="form-group" style={{ marginTop: '2rem', textAlign: 'left' }}>
+                            <label>Enter OTP Code</label>
+                            <div className="input-wrapper">
+                                <ShieldCheck size={18} />
+                                <input type="text" placeholder="123456" value={otpCode} onChange={(e) => setOtpCode(e.target.value)} required maxLength={6} style={{ letterSpacing: '2px', fontSize: '1.2rem', textAlign: 'center' }} />
+                            </div>
+                        </div>
+
+                        <button type="submit" className="btn-auth" disabled={loading} style={{ marginTop: '1rem' }}>
+                            {loading ? 'Verifying...' : 'Verify Email'}
+                        </button>
+                    </motion.form>
+                )}
+
+                {step === 6 && (
+                    <motion.div key="s6" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: 'center' }}>
                         <div style={{ color: 'var(--success)', marginBottom: '1.5rem' }}><CheckCircle2 size={64} style={{ margin: '0 auto' }} /></div>
                         <h3>Registration Verified & Complete</h3>
                         <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
-                            Your company domain has been securely verified and your account is ready.
+                            Your company domain and email have been securely verified and your account is ready.
                         </p>
-                        <button onClick={() => navigate('/company/login')} className="btn-auth" style={{ marginTop: '2rem' }}>Proceed to Login</button>
+                        <button onClick={() => navigate('/dashboard')} className="btn-auth" style={{ marginTop: '2rem' }}>Proceed to Dashboard</button>
                     </motion.div>
                 )}
             </AnimatePresence>

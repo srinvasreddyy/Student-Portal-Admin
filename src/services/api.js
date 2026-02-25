@@ -44,7 +44,8 @@ createAuthRefreshInterceptor(api, refreshAuthLogic);
 export const authApi = {
     register: (data) => api.post('/auth/register', data),
     login: (data) => api.post('/auth/login', data),
-    logout: (refreshToken) => api.post('/auth/logout', { refreshToken })
+    logout: (refreshToken) => api.post('/auth/logout', { refreshToken }),
+    verifyEmail: (data) => api.post('/auth/verify-email', data)
 };
 
 export const projectApi = {
