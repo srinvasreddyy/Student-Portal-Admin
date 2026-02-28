@@ -351,8 +351,23 @@ const CompanyLogin = () => {
         setError('');
         try {
             const res = await authApi.login(formData);
-            localStorage.setItem('accessToken', res.data.tokens.accessToken);
-            localStorage.setItem('refreshToken', res.data.tokens.refreshToken);
+            const { user, tokens } = res.data;
+
+            if (user?.status === 'pending') {
+                setError('Your account is pending Super Admin approval. Please check back later.');
+                return;
+            }
+            if (user?.status === 'rejected') {
+                setError('Your account registration has been rejected.');
+                return;
+            }
+
+            localStorage.setItem('accessToken', tokens.accessToken);
+            localStorage.setItem('refreshToken', tokens.refreshToken);
+            if (tokens.streamToken) {
+                localStorage.setItem('streamToken', tokens.streamToken);
+                localStorage.setItem('user', JSON.stringify(user));
+            }
             navigate('/dashboard');
         } catch (err) {
             setError(err.response?.data?.message || 'Invalid credentials');

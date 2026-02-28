@@ -54,13 +54,10 @@ export const projectApi = {
     acceptStudent: (id, studentRef) => api.post(`/projects/${id}/accept`, { studentRef }),
     rejectApplicant: (id, studentRef, reason) => api.post(`/projects/${id}/reject`, { studentRef, reason }),
     completeProject: (id) => api.post(`/projects/${id}/complete`),
-    cancelProject: (id) => api.delete(`/projects/${id}`)
+    cancelProject: (id) => api.delete(`/projects/${id}`),
+    getMyProjects: () => api.get('/projects/me')
 };
 
-export const chatApi = {
-    getRooms: () => api.get('/chat/rooms'),
-    getMessages: (projectId) => api.get(`/chat/${projectId}/messages`)
-};
 
 export const studentApi = {
     getPublicProfile: (userId) => api.get(`/students/${userId}/public`)
