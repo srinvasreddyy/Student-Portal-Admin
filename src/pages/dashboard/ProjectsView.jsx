@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FolderKanban, Plus, Clock, Users, ArrowLeft, CheckCircle2, X } from 'lucide-react';
-import { chatApi, projectApi } from '../../services/api';
+import { projectApi } from '../../services/api';
 import StudentProfileModal from '../../components/StudentProfileModal';
 
 const ProjectsView = () => {
@@ -20,8 +20,8 @@ const ProjectsView = () => {
     const fetchProjects = async () => {
         setLoading(true);
         try {
-            // Using getRooms as it returns projects where user is author
-            const res = await chatApi.getRooms();
+            // Using getMyProjects as it returns projects where user is author
+            const res = await projectApi.getMyProjects();
             setProjects(res.data.data);
         } catch (error) {
             console.error('Failed to fetch projects', error);
