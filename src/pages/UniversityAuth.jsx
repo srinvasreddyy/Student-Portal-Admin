@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Routes, Route, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GraduationCap, ArrowRight, ShieldCheck, Mail, Globe, Search, UserCircle, CheckCircle2 } from 'lucide-react';
+import { GraduationCap, ArrowRight, ShieldCheck, Mail, Globe, Search, UserCircle, CheckCircle2, Briefcase, Calendar, MapPin } from 'lucide-react';
 import { universityApi, authApi } from '../services/api';
 
 const UniversityAuth = () => {
@@ -38,12 +38,17 @@ const UniversityRegister = () => {
         website: '',
         officialEmail: '',
         repName: '',
+        repRole: '',
+        repDob: '',
+        repLocation: '',
+        repEmail: '',
         phone: '',
         password: ''
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [domainVerified, setDomainVerified] = useState(false);
+    const [otpCode, setOtpCode] = useState('');
 
     // For Search
     const [searchQuery, setSearchQuery] = useState('');
@@ -102,10 +107,28 @@ const UniversityRegister = () => {
         if (!domainVerified) return setError('Please verify your domain first');
         setLoading(true); setError('');
         try {
-            await universityApi.register(formData);
-            setStep(5); // Success step
+            const result = await universityApi.register(formData);
+            if (result.data.success) {
+                const loginRes = await authApi.login({ email: formData.repEmail || formData.officialEmail, password: formData.password });
+                localStorage.setItem('accessToken', loginRes.data.tokens.accessToken);
+                localStorage.setItem('refreshToken', loginRes.data.tokens.refreshToken);
+                setStep(5);
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerifyOtp = async (e) => {
+        e.preventDefault();
+        setLoading(true); setError('');
+        try {
+            await authApi.verifyEmail({ code: otpCode });
+            setStep(6);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Verification failed. Incorrect OTP.');
         } finally {
             setLoading(false);
         }
@@ -120,7 +143,8 @@ const UniversityRegister = () => {
                     {step === 2 && 'Find Institution'}
                     {step === 3 && 'Representative Details'}
                     {step === 4 && 'Domain Verification'}
-                    {step === 5 && 'Registration Complete'}
+                    {step === 5 && 'Verify Email OTP'}
+                    {step === 6 && 'Registration Complete'}
                 </h2>
             </div>
 
@@ -226,6 +250,34 @@ const UniversityRegister = () => {
                             </div>
                         </div>
                         <div className="form-group">
+                            <label>Representative Role</label>
+                            <div className="input-wrapper">
+                                <Briefcase size={18} />
+                                <input type="text" placeholder="e.g. Dean, Admissions Officer" value={formData.repRole} onChange={(e) => setFormData({ ...formData, repRole: e.target.value })} required />
+                            </div>
+                        </div>
+                        <div className="form-group">
+                            <label>Date of Birth</label>
+                            <div className="input-wrapper">
+                                <Calendar size={18} />
+                                <input type="date" value={formData.repDob} onChange={(e) => setFormData({ ...formData, repDob: e.target.value })} required />
+                            </div>
+                        </div>
+                        <div className="form-group">
+                            <label>Location</label>
+                            <div className="input-wrapper">
+                                <MapPin size={18} />
+                                <input type="text" placeholder="City, Country" value={formData.repLocation} onChange={(e) => setFormData({ ...formData, repLocation: e.target.value })} required />
+                            </div>
+                        </div>
+                        <div className="form-group">
+                            <label>Representative Login Email</label>
+                            <div className="input-wrapper">
+                                <Mail size={18} />
+                                <input type="email" placeholder="name@university.edu" value={formData.repEmail} onChange={(e) => setFormData({ ...formData, repEmail: e.target.value })} required />
+                            </div>
+                        </div>
+                        <div className="form-group">
                             <label>Phone Number</label>
                             <div className="input-wrapper">
                                 <Search size={18} />
@@ -280,18 +332,40 @@ const UniversityRegister = () => {
                 )}
 
                 {step === 5 && (
-                    <motion.div key="s5" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: 'center' }}>
+                    <motion.form key="s5" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} onSubmit={handleVerifyOtp} style={{ textAlign: 'center' }}>
+                        <div style={{ color: 'var(--primary)', marginBottom: '1.5rem' }}><Mail size={64} style={{ margin: '0 auto' }} /></div>
+                        <h3>Check Your Email</h3>
+                        <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
+                            We sent a 6-digit confirmation code to <strong>{formData.repEmail || formData.officialEmail}</strong>.
+                        </p>
+
+                        <div className="form-group" style={{ marginTop: '2rem', textAlign: 'left' }}>
+                            <label>Enter OTP Code</label>
+                            <div className="input-wrapper">
+                                <ShieldCheck size={18} />
+                                <input type="text" placeholder="123456" value={otpCode} onChange={(e) => setOtpCode(e.target.value)} required maxLength={6} style={{ letterSpacing: '2px', fontSize: '1.2rem', textAlign: 'center' }} />
+                            </div>
+                        </div>
+
+                        <button type="submit" className="btn-auth" disabled={loading} style={{ marginTop: '1rem' }}>
+                            {loading ? 'Verifying...' : 'Verify Email'}
+                        </button>
+                    </motion.form>
+                )}
+
+                {step === 6 && (
+                    <motion.div key="s6" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: 'center' }}>
                         <div style={{ color: 'var(--success)', marginBottom: '1.5rem' }}><CheckCircle2 size={64} style={{ margin: '0 auto' }} /></div>
                         <h3>Registration Verified & Complete</h3>
                         <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
                             Your institution's domain has been securely verified and your account is ready.
                         </p>
-                        <button onClick={() => navigate('/university/login')} className="btn-auth" style={{ marginTop: '2rem' }}>Proceed to Login</button>
+                        <button onClick={() => navigate('/dashboard')} className="btn-auth" style={{ marginTop: '2rem' }}>Proceed to Dashboard</button>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {step !== 5 && (
+            {step !== 5 && step !== 6 && (
                 <div className="auth-footer">
                     Already registered? <Link to="/university/login">Sign In</Link>
                 </div>
