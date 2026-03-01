@@ -135,10 +135,7 @@ const UniversityRegister = () => {
                                 <Globe size={18} />
                                 <select value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })}>
                                     <option value="United Kingdom">United Kingdom</option>
-                                    <option value="United States">United States</option>
-                                    <option value="India">India</option>
-                                    <option value="France">France</option>
-                                    <option value="Germany">Germany</option>
+                                    <option value="Others">Others</option>
                                 </select>
                             </div>
                         </div>

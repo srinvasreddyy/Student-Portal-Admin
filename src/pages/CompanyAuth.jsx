@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Routes, Route, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, ArrowRight, ShieldCheck, Mail, Briefcase, Globe, Hash, UserCircle, CheckCircle2 } from 'lucide-react';
+import { Building2, ArrowRight, ShieldCheck, Mail, Briefcase, Globe, Hash, UserCircle, CheckCircle2, Users } from 'lucide-react';
 import { companyApi, authApi } from '../services/api';
 
 const CompanyAuth = () => {
@@ -40,7 +40,10 @@ const CompanyRegister = () => {
         officialEmail: '',
         repName: '',
         phone: '',
-        password: ''
+        password: '',
+        numberOfEmployees: '1-10',
+        industry: '',
+        fullAddress: ''
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -48,10 +51,8 @@ const CompanyRegister = () => {
     const [otpCode, setOtpCode] = useState('');
     const [registeredUserId, setRegisteredUserId] = useState(null);
 
-    // For Global Search
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState([]);
-    const [isManualEntry, setIsManualEntry] = useState(false);
+    // For Global Search (Removed)
+    // isManualEntry logic is no longer needed since it is strict manual entry for non-UK.
 
     const navigate = useNavigate();
 
@@ -71,19 +72,6 @@ const CompanyRegister = () => {
         }
     };
 
-    const handleSearchGlobal = async (q) => {
-        setSearchQuery(q);
-        if (q.length < 3) {
-            setSearchResults([]);
-            return;
-        }
-        try {
-            const res = await companyApi.getGlobalList(q);
-            if (res.data.success) setSearchResults(res.data.data);
-        } catch (err) {
-            console.error('Global search error', err);
-        }
-    };
 
     const handleVerifyDomain = async () => {
         if (!formData.website || !formData.officialEmail) return setError('Website and Email required');
@@ -162,11 +150,8 @@ const CompanyRegister = () => {
                             <div className="input-wrapper">
                                 <Globe size={18} />
                                 <select value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })}>
-                                    <option value="UK">United Kingdom</option>
-                                    <option value="US">United States</option>
-                                    <option value="IN">India</option>
-                                    <option value="FR">France</option>
-                                    <option value="DE">Germany</option>
+                                    <option value="UK">UK</option>
+                                    <option value="Others">Others</option>
                                 </select>
                             </div>
                         </div>
@@ -192,44 +177,45 @@ const CompanyRegister = () => {
 
                 {step === 2 && formData.country !== 'UK' && (
                     <motion.div key="s2global" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                        {!isManualEntry ? (
-                            <>
-                                <div className="form-group">
-                                    <label>Search Organization Name</label>
-                                    <div className="input-wrapper">
-                                        <Building2 size={18} />
-                                        <input type="text" placeholder="Type to search..." value={searchQuery} onChange={(e) => handleSearchGlobal(e.target.value)} />
-                                    </div>
-                                    {searchResults.length > 0 && (
-                                        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: '8px', marginTop: '0.5rem', maxHeight: '150px', overflowY: 'auto' }}>
-                                            {searchResults.map((res, i) => (
-                                                <div key={i} onClick={() => { setFormData({ ...formData, organizationName: res.companyName }); setStep(3); }} style={{ padding: '0.8rem', cursor: 'pointer', borderBottom: '1px solid var(--glass-border)' }}>
-                                                    {res.companyName}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                        <>
+                            <div className="form-group">
+                                <label>Organization Name</label>
+                                <div className="input-wrapper">
+                                    <Building2 size={18} />
+                                    <input type="text" placeholder="Official Name" value={formData.organizationName} onChange={(e) => setFormData({ ...formData, organizationName: e.target.value })} required />
                                 </div>
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                    <button onClick={() => setStep(1)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Back</button>
-                                    <button onClick={() => setIsManualEntry(true)} className="btn-auth">Company Not Listed</button>
+                            </div>
+                            <div className="form-group">
+                                <label>Industry</label>
+                                <div className="input-wrapper">
+                                    <Briefcase size={18} />
+                                    <input type="text" placeholder="e.g. Technology, Healthcare, Finance" value={formData.industry} onChange={(e) => setFormData({ ...formData, industry: e.target.value })} required />
                                 </div>
-                            </>
-                        ) : (
-                            <>
-                                <div className="form-group">
-                                    <label>Manual Organization Name</label>
-                                    <div className="input-wrapper">
-                                        <Building2 size={18} />
-                                        <input type="text" placeholder="Official Name" value={formData.organizationName} onChange={(e) => setFormData({ ...formData, organizationName: e.target.value })} required />
-                                    </div>
+                            </div>
+                            <div className="form-group">
+                                <label>Number of Employees</label>
+                                <div className="input-wrapper">
+                                    <Users size={18} />
+                                    <select value={formData.numberOfEmployees} onChange={(e) => setFormData({ ...formData, numberOfEmployees: e.target.value })} required>
+                                        <option value="1-10">1-10</option>
+                                        <option value="11-50">11-50</option>
+                                        <option value="51-200">51-200</option>
+                                        <option value="201-500">201-500</option>
+                                        <option value="500+">500+</option>
+                                    </select>
                                 </div>
-                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <button onClick={() => setIsManualEntry(false)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Back</button>
-                                    <button onClick={() => { if (formData.organizationName) setStep(3); else setError('Name required') }} className="btn-auth">Continue</button>
+                            </div>
+                            <div className="form-group">
+                                <label>Full Location/Address</label>
+                                <div className="input-wrapper" style={{ alignItems: 'flex-start' }}>
+                                    <input type="text" placeholder="123 Example Street, City, Country" value={formData.fullAddress} onChange={(e) => setFormData({ ...formData, fullAddress: e.target.value })} required />
                                 </div>
-                            </>
-                        )}
+                            </div>
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                <button type="button" onClick={() => setStep(1)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Back</button>
+                                <button type="button" onClick={() => { if (formData.organizationName && formData.industry && formData.fullAddress) setStep(3); else setError('Please fill all fields') }} className="btn-auth">Continue</button>
+                            </div>
+                        </>
                     </motion.div>
                 )}
 
@@ -354,7 +340,7 @@ const CompanyLogin = () => {
             const { user, tokens } = res.data;
 
             if (user?.status === 'pending') {
-                setError('Your account is pending Super Admin approval. Please check back later.');
+                setError('Registration successful. Your application has been sent to the Super Admin for review. You will be able to log in once approved.');
                 return;
             }
             if (user?.status === 'rejected') {
