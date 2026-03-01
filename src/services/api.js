@@ -3,7 +3,7 @@ import createAuthRefreshInterceptor from 'axios-auth-refresh';
 
 const API_BASE_URL = 'http://localhost:5000';
 
-const api = axios.create({
+export const api = axios.create({
     baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
@@ -50,6 +50,8 @@ export const authApi = {
 
 export const projectApi = {
     create: (data) => api.post('/projects', data),
+    uploadDocument: (formData) => api.post('/projects/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    downloadDocument: (fileId) => api.get(`/projects/document/${fileId}`, { responseType: 'blob' }),
     getOne: (id) => api.get(`/projects/${id}`),
     acceptStudent: (id, studentRef) => api.post(`/projects/${id}/accept`, { studentRef }),
     rejectApplicant: (id, studentRef, reason) => api.post(`/projects/${id}/reject`, { studentRef, reason }),
@@ -57,7 +59,6 @@ export const projectApi = {
     cancelProject: (id) => api.delete(`/projects/${id}`),
     getMyProjects: () => api.get('/projects/me')
 };
-
 
 export const studentApi = {
     getPublicProfile: (userId) => api.get(`/students/${userId}/public`)
