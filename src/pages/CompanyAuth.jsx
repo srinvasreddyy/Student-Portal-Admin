@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Routes, Route, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, ArrowRight, ShieldCheck, Mail, Briefcase, Globe, Hash, UserCircle, CheckCircle2, Users } from 'lucide-react';
+import { Building2, ArrowRight, ShieldCheck, Mail, Briefcase, Globe, Hash, UserCircle, CheckCircle2, Users, AlertTriangle } from 'lucide-react';
 import { companyApi, authApi } from '../services/api';
 
 const CompanyAuth = () => {
@@ -47,13 +47,13 @@ const CompanyRegister = () => {
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    
+    // Domain Check States
     const [domainVerified, setDomainVerified] = useState(false);
+    const [needsManualVerification, setNeedsManualVerification] = useState(false);
+    const [domainCheckMessage, setDomainCheckMessage] = useState('');
+    
     const [otpCode, setOtpCode] = useState('');
-    const [registeredUserId, setRegisteredUserId] = useState(null);
-
-    // For Global Search (Removed)
-    // isManualEntry logic is no longer needed since it is strict manual entry for non-UK.
-
     const navigate = useNavigate();
 
     const handleSearchUk = async () => {
@@ -78,9 +78,11 @@ const CompanyRegister = () => {
         setLoading(true); setError('');
         try {
             const res = await companyApi.verifyDomain({ website: formData.website, email: formData.officialEmail });
-            if (res.data.success && res.data.data.verified) {
+            if (res.data.success) {
                 setDomainVerified(true);
-                setError(''); // clear errors
+                setNeedsManualVerification(res.data.data.needsDomainManualVerification);
+                setDomainCheckMessage(res.data.data.message);
+                setError(''); 
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Domain verification failed');
@@ -97,11 +99,10 @@ const CompanyRegister = () => {
         try {
             const result = await companyApi.register(formData);
             if (result.data.success) {
-                // Try logging the user in directly to obtain the token so we can hit /auth/verify-email
                 const loginRes = await authApi.login({ email: formData.officialEmail, password: formData.password });
                 localStorage.setItem('accessToken', loginRes.data.tokens.accessToken);
                 localStorage.setItem('refreshToken', loginRes.data.tokens.refreshToken);
-                setStep(5); // Move to OTP input step
+                setStep(5); 
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed');
@@ -114,11 +115,8 @@ const CompanyRegister = () => {
         e.preventDefault();
         setLoading(true); setError('');
         try {
-            // Need accessToken to hit /auth/verify-email natively
-            const res = await companyApi.verifyDomain({ email: formData.officialEmail }); // Just dummy to show
-            // The real route is authApi.verifyEmail which sends the header
             await authApi.verifyEmail({ code: otpCode });
-            setStep(6); // Success page
+            setStep(6); 
         } catch (err) {
             setError(err.response?.data?.message || 'Verification failed. Incorrect OTP.');
         } finally {
@@ -236,7 +234,7 @@ const CompanyRegister = () => {
                             </div>
                         </div>
                         <div className="form-group">
-                            <label>Official Work Email</label>
+                            <label>Official Work Email (Login)</label>
                             <div className="input-wrapper">
                                 <Mail size={18} />
                                 <input type="email" placeholder="name@company.com" value={formData.officialEmail} onChange={(e) => { setFormData({ ...formData, officialEmail: e.target.value }); setDomainVerified(false); }} required />
@@ -267,9 +265,23 @@ const CompanyRegister = () => {
                             </div>
                         </div>
 
+                        {domainVerified && needsManualVerification && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#d97706', backgroundColor: '#fef3c7', padding: '12px', borderRadius: '8px', marginTop: '1rem', fontSize: '0.9rem', border: '1px solid #fde68a' }}>
+                                <AlertTriangle size={20} />
+                                <span>{domainCheckMessage}</span>
+                            </div>
+                        )}
+
+                        {domainVerified && !needsManualVerification && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#16a34a', backgroundColor: '#dcfce7', padding: '12px', borderRadius: '8px', marginTop: '1rem', fontSize: '0.9rem', border: '1px solid #bbf7d0' }}>
+                                <CheckCircle2 size={20} />
+                                <span>{domainCheckMessage}</span>
+                            </div>
+                        )}
+
                         <div style={{ margin: '1.5rem 0' }}>
-                            <button onClick={handleVerifyDomain} disabled={loading || domainVerified} className="btn-auth" style={{ background: domainVerified ? 'var(--success)' : 'var(--primary)' }}>
-                                {loading ? 'Verifying...' : domainVerified ? 'Domain Verified ✓' : 'Verify Domain Match'}
+                            <button onClick={handleVerifyDomain} disabled={loading || domainVerified} className="btn-auth" style={{ background: domainVerified ? (needsManualVerification ? '#f59e0b' : 'var(--success)') : 'var(--primary)' }}>
+                                {loading ? 'Verifying...' : domainVerified ? 'Domain Checked ✓' : 'Verify Domain Match'}
                             </button>
                         </div>
 
@@ -307,9 +319,9 @@ const CompanyRegister = () => {
                 {step === 6 && (
                     <motion.div key="s6" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: 'center' }}>
                         <div style={{ color: 'var(--success)', marginBottom: '1.5rem' }}><CheckCircle2 size={64} style={{ margin: '0 auto' }} /></div>
-                        <h3>Registration Verified & Complete</h3>
+                        <h3>Registration Submitted</h3>
                         <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
-                            Your company domain and email have been securely verified and your account is ready.
+                            Your company registration has been securely processed. It is currently pending Super Admin review.
                         </p>
                         <button onClick={() => navigate('/dashboard')} className="btn-auth" style={{ marginTop: '2rem' }}>Proceed to Dashboard</button>
                     </motion.div>

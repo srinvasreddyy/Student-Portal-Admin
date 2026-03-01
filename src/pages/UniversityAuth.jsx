@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Routes, Route, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GraduationCap, ArrowRight, ShieldCheck, Mail, Globe, Search, UserCircle, CheckCircle2, Briefcase, Calendar, MapPin } from 'lucide-react';
+import { GraduationCap, ArrowRight, ShieldCheck, Mail, Globe, Search, UserCircle, CheckCircle2, Briefcase, Calendar, MapPin, AlertTriangle } from 'lucide-react';
 import { universityApi, authApi } from '../services/api';
 
 const UniversityAuth = () => {
@@ -41,13 +41,17 @@ const UniversityRegister = () => {
         repRole: '',
         repDob: '',
         repLocation: '',
-        repEmail: '',
         phone: '',
         password: ''
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    
+    // Domain Check States
     const [domainVerified, setDomainVerified] = useState(false);
+    const [needsManualVerification, setNeedsManualVerification] = useState(false);
+    const [domainCheckMessage, setDomainCheckMessage] = useState('');
+    
     const [otpCode, setOtpCode] = useState('');
 
     // For Search
@@ -90,8 +94,10 @@ const UniversityRegister = () => {
         setLoading(true); setError('');
         try {
             const res = await universityApi.verifyDomain({ website: formData.website, email: formData.officialEmail });
-            if (res.data.success && res.data.data.verified) {
+            if (res.data.success) {
                 setDomainVerified(true);
+                setNeedsManualVerification(res.data.data.needsDomainManualVerification);
+                setDomainCheckMessage(res.data.data.message);
                 setError('');
             }
         } catch (err) {
@@ -109,7 +115,7 @@ const UniversityRegister = () => {
         try {
             const result = await universityApi.register(formData);
             if (result.data.success) {
-                const loginRes = await authApi.login({ email: formData.repEmail || formData.officialEmail, password: formData.password });
+                const loginRes = await authApi.login({ email: formData.officialEmail, password: formData.password });
                 localStorage.setItem('accessToken', loginRes.data.tokens.accessToken);
                 localStorage.setItem('refreshToken', loginRes.data.tokens.refreshToken);
                 setStep(5);
@@ -271,11 +277,12 @@ const UniversityRegister = () => {
                             </div>
                         </div>
                         <div className="form-group">
-                            <label>Representative Login Email</label>
+                            <label>Official Institutional Email (Login)</label>
                             <div className="input-wrapper">
                                 <Mail size={18} />
-                                <input type="email" placeholder="name@university.edu" value={formData.repEmail} onChange={(e) => setFormData({ ...formData, repEmail: e.target.value })} required />
+                                <input type="email" placeholder="admin@university.edu" value={formData.officialEmail} onChange={(e) => { setFormData({ ...formData, officialEmail: e.target.value }); setDomainVerified(false); }} required />
                             </div>
+                            <small style={{ color: 'var(--text-secondary)', marginTop: '0.5rem', display: 'block' }}>Must be an organization email (no Gmail/Yahoo).</small>
                         </div>
                         <div className="form-group">
                             <label>Phone Number</label>
@@ -307,18 +314,24 @@ const UniversityRegister = () => {
                                 <input type="url" placeholder="https://university.edu" value={formData.website} onChange={(e) => { setFormData({ ...formData, website: e.target.value }); setDomainVerified(false); }} required />
                             </div>
                         </div>
-                        <div className="form-group">
-                            <label>Official Institutional Email</label>
-                            <div className="input-wrapper">
-                                <Mail size={18} />
-                                <input type="email" placeholder="admin@university.edu" value={formData.officialEmail} onChange={(e) => { setFormData({ ...formData, officialEmail: e.target.value }); setDomainVerified(false); }} required />
+
+                        {domainVerified && needsManualVerification && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#d97706', backgroundColor: '#fef3c7', padding: '12px', borderRadius: '8px', marginTop: '1rem', fontSize: '0.9rem', border: '1px solid #fde68a' }}>
+                                <AlertTriangle size={20} />
+                                <span>{domainCheckMessage}</span>
                             </div>
-                            <small style={{ color: 'var(--text-secondary)', marginTop: '0.5rem', display: 'block' }}>Email domain must match website domain. Public emails (Gmail, etc) are rejected.</small>
-                        </div>
+                        )}
+
+                        {domainVerified && !needsManualVerification && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#16a34a', backgroundColor: '#dcfce7', padding: '12px', borderRadius: '8px', marginTop: '1rem', fontSize: '0.9rem', border: '1px solid #bbf7d0' }}>
+                                <CheckCircle2 size={20} />
+                                <span>{domainCheckMessage}</span>
+                            </div>
+                        )}
 
                         <div style={{ margin: '1.5rem 0' }}>
-                            <button onClick={handleVerifyDomain} disabled={loading || domainVerified} className="btn-auth" style={{ background: domainVerified ? 'var(--success)' : 'var(--primary)' }}>
-                                {loading ? 'Verifying...' : domainVerified ? 'Domain Verified ✓' : 'Verify Domain Match'}
+                            <button onClick={handleVerifyDomain} disabled={loading || domainVerified} className="btn-auth" style={{ background: domainVerified ? (needsManualVerification ? '#f59e0b' : 'var(--success)') : 'var(--primary)' }}>
+                                {loading ? 'Verifying...' : domainVerified ? 'Domain Checked ✓' : 'Verify Domain Match'}
                             </button>
                         </div>
 
@@ -336,7 +349,7 @@ const UniversityRegister = () => {
                         <div style={{ color: 'var(--primary)', marginBottom: '1.5rem' }}><Mail size={64} style={{ margin: '0 auto' }} /></div>
                         <h3>Check Your Email</h3>
                         <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
-                            We sent a 6-digit confirmation code to <strong>{formData.repEmail || formData.officialEmail}</strong>.
+                            We sent a 6-digit confirmation code to <strong>{formData.officialEmail}</strong>.
                         </p>
 
                         <div className="form-group" style={{ marginTop: '2rem', textAlign: 'left' }}>
@@ -356,9 +369,9 @@ const UniversityRegister = () => {
                 {step === 6 && (
                     <motion.div key="s6" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: 'center' }}>
                         <div style={{ color: 'var(--success)', marginBottom: '1.5rem' }}><CheckCircle2 size={64} style={{ margin: '0 auto' }} /></div>
-                        <h3>Registration Verified & Complete</h3>
+                        <h3>Registration Submitted</h3>
                         <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
-                            Your institution's domain has been securely verified and your account is ready.
+                            Your institution's registration has been securely processed. It is currently pending Super Admin review.
                         </p>
                         <button onClick={() => navigate('/dashboard')} className="btn-auth" style={{ marginTop: '2rem' }}>Proceed to Dashboard</button>
                     </motion.div>
