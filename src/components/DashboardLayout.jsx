@@ -1,12 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, FolderKanban, MessageSquare, LogOut, Menu, X, ShieldCheck } from 'lucide-react';
 import { authApi } from '../services/api';
 
 const DashboardLayout = () => {
-    const [sidebarOpen, setSidebarOpen] = useState(true);
+    // Default open on desktop, closed on mobile
+    const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const handleResize = () => {
+            const mobile = window.innerWidth <= 768;
+            setIsMobile(mobile);
+            if (!mobile) setSidebarOpen(true);
+            else setSidebarOpen(false);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const handleLogout = async () => {
         try {
@@ -20,76 +33,92 @@ const DashboardLayout = () => {
         }
     };
 
+    const closeSidebarMobile = () => {
+        if (isMobile) setSidebarOpen(false);
+    };
+
     return (
-        <div className="dashboard-container" style={{ background: 'var(--bg-color)', backgroundImage: 'var(--bg-gradient)' }}>
+        <div className="dashboard-container" style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-color)', overflow: 'hidden' }}>
+            
+            {/* Mobile Backdrop Overlay */}
+            <AnimatePresence>
+                {isMobile && sidebarOpen && (
+                    <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        exit={{ opacity: 0 }}
+                        className="mobile-overlay" 
+                        onClick={() => setSidebarOpen(false)} 
+                    />
+                )}
+            </AnimatePresence>
+
             {/* Sidebar */}
-            <motion.aside
-                initial={{ x: -100, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                className={`dashboard-sidebar glass ${sidebarOpen ? 'open' : 'closed'}`}
-                style={{ zIndex: 100 }}
+            <aside
+                className={`dashboard-sidebar ${sidebarOpen ? 'open' : 'closed'}`}
             >
-                <div className="sidebar-header" style={{ marginBottom: '2rem' }}>
-                    <motion.div whileHover={{ rotate: 15 }} style={{ display: 'inline-flex' }}>
-                        <ShieldCheck className="sidebar-logo-icon" size={32} color="var(--primary)" />
-                    </motion.div>
-                    {sidebarOpen && <span className="sidebar-logo-text" style={{ fontSize: '1.5rem', fontWeight: 700 }}>Admin<span className="accent">Connect</span></span>}
-                    <button className="mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
-                        <X size={20} />
-                    </button>
+                <div className="sidebar-header" style={{ marginBottom: '1rem' }}>
+                    <div style={{ display: 'inline-flex' }}>
+                        <ShieldCheck className="sidebar-logo-icon" size={32} />
+                    </div>
+                    {sidebarOpen && <span className="sidebar-logo-text">Admin<span style={{ color: 'var(--primary)' }}>Connect</span></span>}
+                    {isMobile && (
+                        <button style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-secondary)' }} onClick={() => setSidebarOpen(false)}>
+                            <X size={24} />
+                        </button>
+                    )}
                 </div>
 
-                <nav className="sidebar-nav" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <NavLink to="/dashboard" end className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`} style={({ isActive }) => isActive ? { background: 'hsla(240, 100%, 70%, 0.15)', borderRight: '3px solid var(--primary)', color: 'var(--text-primary)' } : { color: 'var(--text-secondary)' }}>
-                        <motion.div whileHover={{ scale: 1.1 }}><LayoutDashboard size={20} /></motion.div>
+                <nav className="sidebar-nav">
+                    <NavLink to="/dashboard" end onClick={closeSidebarMobile} className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                        <LayoutDashboard size={20} />
                         {sidebarOpen && <span>Overview</span>}
                     </NavLink>
-                    <NavLink to="/dashboard/projects" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`} style={({ isActive }) => isActive ? { background: 'hsla(280, 100%, 65%, 0.15)', borderRight: '3px solid var(--secondary)', color: 'var(--text-primary)' } : { color: 'var(--text-secondary)' }}>
-                        <motion.div whileHover={{ scale: 1.1 }}><FolderKanban size={20} /></motion.div>
+                    <NavLink to="/dashboard/projects" onClick={closeSidebarMobile} className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                        <FolderKanban size={20} />
                         {sidebarOpen && <span>Projects</span>}
                     </NavLink>
-                    <NavLink to="/dashboard/chat" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`} style={({ isActive }) => isActive ? { background: 'hsla(200, 100%, 55%, 0.15)', borderRight: '3px solid var(--accent)', color: 'var(--text-primary)' } : { color: 'var(--text-secondary)' }}>
-                        <motion.div whileHover={{ scale: 1.1 }}><MessageSquare size={20} /></motion.div>
+                    <NavLink to="/dashboard/chat" onClick={closeSidebarMobile} className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                        <MessageSquare size={20} />
                         {sidebarOpen && <span>Messages</span>}
                     </NavLink>
                 </nav>
 
-                <div className="sidebar-footer" style={{ marginTop: 'auto', paddingBottom: '1rem' }}>
-                    <motion.button whileHover={{ scale: 1.02, background: 'hsla(350, 80%, 65%, 0.15)', color: 'var(--error)' }} className="sidebar-link logout-btn" onClick={handleLogout} style={{ width: '100%', color: 'var(--text-secondary)' }}>
+                <div className="sidebar-footer">
+                    <button className="sidebar-link logout-btn" onClick={handleLogout}>
                         <LogOut size={20} />
                         {sidebarOpen && <span>Logout</span>}
-                    </motion.button>
+                    </button>
                 </div>
-            </motion.aside>
+            </aside>
 
             {/* Main Content Area */}
-            <main className="dashboard-main" style={{ display: 'flex', flexDirection: 'column' }}>
-                <motion.header
-                    initial={{ y: -50, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.1 }}
-                    className="dashboard-topbar glass"
-                    style={{ borderBottom: '1px solid var(--glass-border)', background: 'hsla(230, 25%, 10%, 0.6)' }}
-                >
-                    <button className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ color: 'var(--text-primary)' }}>
+            <main style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+                <header className="dashboard-topbar">
+                    <button style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setSidebarOpen(!sidebarOpen)}>
                         <Menu size={24} />
                     </button>
-                    <div className="topbar-user" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Organization Admin</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }} className="hide-on-mobile">
+                            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Organization Admin</span>
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Dashboard Access</span>
                         </div>
-                        <motion.div whileHover={{ scale: 1.1, boxShadow: '0 0 15px var(--primary-glow)' }} className="avatar" style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))', color: '#fff', fontWeight: 700, borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>A</motion.div>
+                        <div className="avatar">A</div>
                     </div>
-                </motion.header>
+                </header>
 
-                <div className="dashboard-content scrollbar-custom" style={{ flex: 1, padding: '2rem', position: 'relative' }}>
+                <div className="dashboard-content scrollbar-custom">
                     <AnimatePresence mode="wait">
                         <Outlet />
                     </AnimatePresence>
                 </div>
             </main>
+
+            <style>{`
+                @media (max-width: 640px) {
+                    .hide-on-mobile { display: none !important; }
+                }
+            `}</style>
         </div>
     );
 };

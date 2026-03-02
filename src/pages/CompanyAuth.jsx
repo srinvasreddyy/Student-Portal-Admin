@@ -25,7 +25,7 @@ const CompanyLanding = () => (
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <Link to="register" className="btn-auth">Register Organization</Link>
-            <Link to="login" className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Sign In to Account</Link>
+            <Link to="login" className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}>Sign In to Account</Link>
         </div>
     </motion.div>
 );
@@ -72,7 +72,6 @@ const CompanyRegister = () => {
         }
     };
 
-
     const handleVerifyDomain = async () => {
         if (!formData.website || !formData.officialEmail) return setError('Website and Email required');
         setLoading(true); setError('');
@@ -99,26 +98,12 @@ const CompanyRegister = () => {
         try {
             const result = await companyApi.register(formData);
             if (result.data.success) {
-                const loginRes = await authApi.login({ email: formData.officialEmail, password: formData.password });
-                localStorage.setItem('accessToken', loginRes.data.tokens.accessToken);
-                localStorage.setItem('refreshToken', loginRes.data.tokens.refreshToken);
-                setStep(5); 
+                // Bypass auto-login and jump straight to success screen 
+                // to prevent the "Super Admin Approval Required" 403 error.
+                setStep(6); 
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleVerifyOtp = async (e) => {
-        e.preventDefault();
-        setLoading(true); setError('');
-        try {
-            await authApi.verifyEmail({ code: otpCode });
-            setStep(6); 
-        } catch (err) {
-            setError(err.response?.data?.message || 'Verification failed. Incorrect OTP.');
         } finally {
             setLoading(false);
         }
@@ -133,7 +118,6 @@ const CompanyRegister = () => {
                     {step === 2 && 'Find Organization'}
                     {step === 3 && 'Representative Details'}
                     {step === 4 && 'Domain Verification'}
-                    {step === 5 && 'Verify Email OTP'}
                     {step === 6 && 'Registration Complete'}
                 </h2>
             </div>
@@ -167,7 +151,7 @@ const CompanyRegister = () => {
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button onClick={() => setStep(1)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Back</button>
+                            <button onClick={() => setStep(1)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}>Back</button>
                             <button onClick={handleSearchUk} className="btn-auth" disabled={loading}>{loading ? 'Searching...' : 'Find Company'}</button>
                         </div>
                     </motion.div>
@@ -210,7 +194,7 @@ const CompanyRegister = () => {
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                <button type="button" onClick={() => setStep(1)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Back</button>
+                                <button type="button" onClick={() => setStep(1)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}>Back</button>
                                 <button type="button" onClick={() => { if (formData.organizationName && formData.industry && formData.fullAddress) setStep(3); else setError('Please fill all fields') }} className="btn-auth">Continue</button>
                             </div>
                         </>
@@ -249,7 +233,7 @@ const CompanyRegister = () => {
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button type="button" onClick={() => setStep(2)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Back</button>
+                            <button type="button" onClick={() => setStep(2)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}>Back</button>
                             <button type="submit" className="btn-auth">Continue</button>
                         </div>
                     </motion.form>
@@ -286,7 +270,7 @@ const CompanyRegister = () => {
                         </div>
 
                         <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button onClick={() => setStep(3)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Back</button>
+                            <button onClick={() => setStep(3)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}>Back</button>
                             <button onClick={handleRegister} className="btn-auth" disabled={!domainVerified || loading}>
                                 {loading ? 'Registering...' : 'Complete Registration'}
                             </button>
@@ -294,41 +278,19 @@ const CompanyRegister = () => {
                     </motion.div>
                 )}
 
-                {step === 5 && (
-                    <motion.form key="s5" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} onSubmit={handleVerifyOtp} style={{ textAlign: 'center' }}>
-                        <div style={{ color: 'var(--primary)', marginBottom: '1.5rem' }}><Mail size={64} style={{ margin: '0 auto' }} /></div>
-                        <h3>Check Your Email</h3>
-                        <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
-                            We sent a 6-digit confirmation code to <strong>{formData.officialEmail}</strong>.
-                        </p>
-
-                        <div className="form-group" style={{ marginTop: '2rem', textAlign: 'left' }}>
-                            <label>Enter OTP Code</label>
-                            <div className="input-wrapper">
-                                <ShieldCheck size={18} />
-                                <input type="text" placeholder="123456" value={otpCode} onChange={(e) => setOtpCode(e.target.value)} required maxLength={6} style={{ letterSpacing: '2px', fontSize: '1.2rem', textAlign: 'center' }} />
-                            </div>
-                        </div>
-
-                        <button type="submit" className="btn-auth" disabled={loading} style={{ marginTop: '1rem' }}>
-                            {loading ? 'Verifying...' : 'Verify Email'}
-                        </button>
-                    </motion.form>
-                )}
-
                 {step === 6 && (
                     <motion.div key="s6" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: 'center' }}>
                         <div style={{ color: 'var(--success)', marginBottom: '1.5rem' }}><CheckCircle2 size={64} style={{ margin: '0 auto' }} /></div>
                         <h3>Registration Submitted</h3>
                         <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
-                            Your company registration has been securely processed. It is currently pending Super Admin review.
+                            Your company registration has been securely processed. It is currently pending Super Admin review. You will receive an email once approved.
                         </p>
-                        <button onClick={() => navigate('/dashboard')} className="btn-auth" style={{ marginTop: '2rem' }}>Proceed to Dashboard</button>
+                        <button onClick={() => navigate('/')} className="btn-auth" style={{ marginTop: '2rem' }}>Return to Home</button>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {step !== 5 && (
+            {step !== 6 && (
                 <div className="auth-footer">
                     Already registered? <Link to="/company/login">Sign In</Link>
                 </div>
@@ -379,7 +341,7 @@ const CompanyLogin = () => {
             <div className="auth-header">
                 <div className="auth-icon-bg"><Building2 size={32} /></div>
                 <h2>Welcome Back</h2>
-                <p>Sign in to your company admin account.</p>
+                <p style={{ color: 'var(--text-secondary)' }}>Sign in to your company admin account.</p>
             </div>
 
             {error && <div className="error-msg">{error}</div>}

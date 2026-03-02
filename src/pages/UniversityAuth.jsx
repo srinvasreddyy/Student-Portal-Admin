@@ -25,7 +25,7 @@ const UniversityLanding = () => (
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <Link to="register" className="btn-auth">Register Institution</Link>
-            <Link to="login" className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Sign In to Account</Link>
+            <Link to="login" className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}>Sign In to Account</Link>
         </div>
     </motion.div>
 );
@@ -52,8 +52,6 @@ const UniversityRegister = () => {
     const [needsManualVerification, setNeedsManualVerification] = useState(false);
     const [domainCheckMessage, setDomainCheckMessage] = useState('');
     
-    const [otpCode, setOtpCode] = useState('');
-
     // For Search
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
@@ -115,26 +113,12 @@ const UniversityRegister = () => {
         try {
             const result = await universityApi.register(formData);
             if (result.data.success) {
-                const loginRes = await authApi.login({ email: formData.officialEmail, password: formData.password });
-                localStorage.setItem('accessToken', loginRes.data.tokens.accessToken);
-                localStorage.setItem('refreshToken', loginRes.data.tokens.refreshToken);
-                setStep(5);
+                // Bypass auto-login to prevent the "Contact Super Admin" 403 error page.
+                // Redirect user to the Success UI.
+                setStep(6);
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleVerifyOtp = async (e) => {
-        e.preventDefault();
-        setLoading(true); setError('');
-        try {
-            await authApi.verifyEmail({ code: otpCode });
-            setStep(6);
-        } catch (err) {
-            setError(err.response?.data?.message || 'Verification failed. Incorrect OTP.');
         } finally {
             setLoading(false);
         }
@@ -149,7 +133,6 @@ const UniversityRegister = () => {
                     {step === 2 && 'Find Institution'}
                     {step === 3 && 'Representative Details'}
                     {step === 4 && 'Domain Verification'}
-                    {step === 5 && 'Verify Email OTP'}
                     {step === 6 && 'Registration Complete'}
                 </h2>
             </div>
@@ -182,7 +165,7 @@ const UniversityRegister = () => {
                             <label>Select UK University</label>
                             {loading && <p>Loading UK universities...</p>}
                             {!loading && searchResults.length > 0 && (
-                                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: '8px', maxHeight: '200px', overflowY: 'auto' }}>
+                                <div style={{ background: 'var(--bg-color)', border: '1px solid var(--glass-border)', borderRadius: '8px', maxHeight: '200px', overflowY: 'auto' }}>
                                     {searchResults.map((res, i) => (
                                         <div key={i} onClick={() => {
                                             setFormData({ ...formData, organizationName: res.universityName, website: res.website || '' });
@@ -195,7 +178,7 @@ const UniversityRegister = () => {
                             )}
                         </div>
                         <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                            <button onClick={() => setStep(1)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Back</button>
+                            <button onClick={() => setStep(1)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}>Back</button>
                         </div>
                     </motion.div>
                 )}
@@ -211,7 +194,7 @@ const UniversityRegister = () => {
                                         <input type="text" placeholder="Type to search..." value={searchQuery} onChange={(e) => handleSearchGlobal(e.target.value)} />
                                     </div>
                                     {searchResults.length > 0 && (
-                                        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: '8px', marginTop: '0.5rem', maxHeight: '150px', overflowY: 'auto' }}>
+                                        <div style={{ background: 'var(--bg-color)', border: '1px solid var(--glass-border)', borderRadius: '8px', marginTop: '0.5rem', maxHeight: '150px', overflowY: 'auto' }}>
                                             {searchResults.map((res, i) => (
                                                 <div key={i} onClick={() => {
                                                     setFormData({ ...formData, organizationName: res.universityName, website: res.website || '' });
@@ -224,7 +207,7 @@ const UniversityRegister = () => {
                                     )}
                                 </div>
                                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                    <button onClick={() => setStep(1)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Back</button>
+                                    <button onClick={() => setStep(1)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}>Back</button>
                                     <button onClick={() => setIsManualEntry(true)} className="btn-auth">Not Listed</button>
                                 </div>
                             </>
@@ -238,7 +221,7 @@ const UniversityRegister = () => {
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <button onClick={() => setIsManualEntry(false)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Back</button>
+                                    <button onClick={() => setIsManualEntry(false)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}>Back</button>
                                     <button onClick={() => { if (formData.organizationName) setStep(3); else setError('Name required') }} className="btn-auth">Continue</button>
                                 </div>
                             </>
@@ -299,7 +282,7 @@ const UniversityRegister = () => {
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button type="button" onClick={() => setStep(2)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Back</button>
+                            <button type="button" onClick={() => setStep(2)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}>Back</button>
                             <button type="submit" className="btn-auth">Continue</button>
                         </div>
                     </motion.form>
@@ -336,7 +319,7 @@ const UniversityRegister = () => {
                         </div>
 
                         <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button onClick={() => setStep(3)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Back</button>
+                            <button onClick={() => setStep(3)} className="btn-auth" style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}>Back</button>
                             <button onClick={handleRegister} className="btn-auth" disabled={!domainVerified || loading}>
                                 {loading ? 'Registering...' : 'Complete Registration'}
                             </button>
@@ -344,41 +327,19 @@ const UniversityRegister = () => {
                     </motion.div>
                 )}
 
-                {step === 5 && (
-                    <motion.form key="s5" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} onSubmit={handleVerifyOtp} style={{ textAlign: 'center' }}>
-                        <div style={{ color: 'var(--primary)', marginBottom: '1.5rem' }}><Mail size={64} style={{ margin: '0 auto' }} /></div>
-                        <h3>Check Your Email</h3>
-                        <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
-                            We sent a 6-digit confirmation code to <strong>{formData.officialEmail}</strong>.
-                        </p>
-
-                        <div className="form-group" style={{ marginTop: '2rem', textAlign: 'left' }}>
-                            <label>Enter OTP Code</label>
-                            <div className="input-wrapper">
-                                <ShieldCheck size={18} />
-                                <input type="text" placeholder="123456" value={otpCode} onChange={(e) => setOtpCode(e.target.value)} required maxLength={6} style={{ letterSpacing: '2px', fontSize: '1.2rem', textAlign: 'center' }} />
-                            </div>
-                        </div>
-
-                        <button type="submit" className="btn-auth" disabled={loading} style={{ marginTop: '1rem' }}>
-                            {loading ? 'Verifying...' : 'Verify Email'}
-                        </button>
-                    </motion.form>
-                )}
-
                 {step === 6 && (
                     <motion.div key="s6" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: 'center' }}>
                         <div style={{ color: 'var(--success)', marginBottom: '1.5rem' }}><CheckCircle2 size={64} style={{ margin: '0 auto' }} /></div>
                         <h3>Registration Submitted</h3>
                         <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
-                            Your institution's registration has been securely processed. It is currently pending Super Admin review.
+                            Your institution's registration has been securely processed. It is currently pending Super Admin review. You will receive an email once approved.
                         </p>
-                        <button onClick={() => navigate('/dashboard')} className="btn-auth" style={{ marginTop: '2rem' }}>Proceed to Dashboard</button>
+                        <button onClick={() => navigate('/')} className="btn-auth" style={{ marginTop: '2rem' }}>Return to Home</button>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {step !== 5 && step !== 6 && (
+            {step !== 6 && (
                 <div className="auth-footer">
                     Already registered? <Link to="/university/login">Sign In</Link>
                 </div>

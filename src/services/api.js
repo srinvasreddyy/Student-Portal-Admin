@@ -50,10 +50,12 @@ export const authApi = {
 
 export const projectApi = {
     create: (data) => api.post('/projects', data),
+    updateMedia: (id, data) => api.patch(`/projects/${id}/media`, data), // ADD THIS LINE
     uploadDocument: (formData) => api.post('/projects/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
     downloadDocument: (fileId) => api.get(`/projects/document/${fileId}`, { responseType: 'blob' }),
     getOne: (id) => api.get(`/projects/${id}`),
     acceptStudent: (id, studentRef) => api.post(`/projects/${id}/accept`, { studentRef }),
+    removeStudent: (id, studentRef) => api.post(`/projects/${id}/remove`, { studentRef }),
     rejectApplicant: (id, studentRef, reason) => api.post(`/projects/${id}/reject`, { studentRef, reason }),
     completeProject: (id) => api.post(`/projects/${id}/complete`),
     cancelProject: (id) => api.delete(`/projects/${id}`),
