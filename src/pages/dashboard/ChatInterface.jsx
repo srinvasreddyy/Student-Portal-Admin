@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StreamChat } from 'stream-chat';
-import { 
-    Chat, 
-    Channel, 
-    ChannelList, 
-    Window, 
-    ChannelHeader, 
-    MessageList, 
-    MessageInput, 
+import {
+    Chat,
+    Channel,
+    ChannelList,
+    Window,
+    ChannelHeader,
+    MessageList,
+    MessageInput,
     Thread,
     useChatContext
 } from 'stream-chat-react';
@@ -76,7 +76,7 @@ const ProjectDetailsSidebar = ({ project, isMobile, onClose }) => {
                     </button>
                 )}
             </div>
-            
+
             <div className="scrollbar-custom" style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 <div>
                     <h4 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: '0.75rem', lineHeight: '1.3', fontWeight: '700', fontFamily: 'Outfit, sans-serif' }}>
@@ -100,7 +100,7 @@ const ProjectDetailsSidebar = ({ project, isMobile, onClose }) => {
                             </div>
                         </div>
                     )}
-                    
+
                     {project.techStack?.length > 0 && (
                         <div>
                             <strong style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -135,7 +135,7 @@ const ProjectDetailsSidebar = ({ project, isMobile, onClose }) => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             {project.projectDocuments.map((doc, i) => (
                                 <div key={i} style={{ display: 'flex', flexDirection: 'column', background: '#ffffff', border: '1px solid #e2e8f0', padding: '0.8rem 1rem', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-                                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.4rem' }}>{doc.tag || `Resource ${i+1}`}</span>
+                                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.4rem' }}>{doc.tag || `Resource ${i + 1}`}</span>
                                     {doc.url ? (
                                         <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: '600', width: 'fit-content' }}>
                                             <LinkIcon size={12} /> Open External Link
@@ -194,26 +194,26 @@ const WhatsappChatLayout = ({ projects, filters, sort }) => {
 
     return (
         <div style={{ display: 'flex', width: '100%', height: '100%', background: '#ffffff' }}>
-            
+
             {/* 1. Groups List Sidebar */}
             {showChannelList && (
-                <div style={{ 
-                    width: isMobile ? '100%' : '320px', 
-                    borderRight: isMobile ? 'none' : '1px solid #e2e8f0', 
-                    background: '#f8fafc', 
-                    flexShrink: 0, 
-                    display: 'flex', 
-                    flexDirection: 'column' 
+                <div style={{
+                    width: isMobile ? '100%' : '320px',
+                    borderRight: isMobile ? 'none' : '1px solid #e2e8f0',
+                    background: '#f8fafc',
+                    flexShrink: 0,
+                    display: 'flex',
+                    flexDirection: 'column'
                 }}>
                     <div style={{ padding: '1.25rem', borderBottom: '1px solid #e2e8f0', background: '#ffffff' }}>
                         <h2 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)', fontFamily: 'Outfit, sans-serif' }}>Groups</h2>
                     </div>
                     <div style={{ flex: 1, overflowY: 'auto' }}>
-                        <ChannelList 
-                            filters={filters} 
-                            sort={sort} 
+                        <ChannelList
+                            filters={filters}
+                            sort={sort}
                             // Stream Prop Fix: Prevent it from aggressively auto-selecting the first chat on mobile devices
-                            setActiveChannelOnMount={!isMobile} 
+                            setActiveChannelOnMount={!isMobile}
                         />
                     </div>
                 </div>
@@ -227,8 +227,8 @@ const WhatsappChatLayout = ({ projects, filters, sort }) => {
                             <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e2e8f0', background: '#ffffff', padding: isMobile ? '0 0.5rem' : '0' }}>
                                 {/* Mobile Back Arrow to clear the active channel and return to Groups */}
                                 {isMobile && (
-                                    <button 
-                                        onClick={() => setActiveChannel(null)} 
+                                    <button
+                                        onClick={() => setActiveChannel(null)}
                                         style={{ padding: '0.5rem', marginRight: '0.5rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', background: 'transparent', border: 'none', cursor: 'pointer' }}
                                     >
                                         <ArrowLeft size={24} />
@@ -290,6 +290,7 @@ const ChatInterface = () => {
     const [userId, setUserId] = useState(null);
     const [initError, setInitError] = useState(null);
     const [projects, setProjects] = useState([]);
+    const isConnecting = useRef(false);
 
     useEffect(() => {
         if (!apiKey) {
@@ -297,40 +298,65 @@ const ChatInterface = () => {
             return;
         }
 
+        let isMounted = true;
+
+        // Guard against double-init from React 18 StrictMode
+        if (isConnecting.current) return;
+        isConnecting.current = true;
+
         const initChat = async () => {
             try {
                 const streamToken = localStorage.getItem('streamToken');
                 const userStr = localStorage.getItem('user');
 
                 if (!streamToken || !userStr) {
-                    setInitError("Missing Stream credentials. Please log out and log back in.");
+                    if (isMounted) setInitError("Missing Stream credentials. Please log out and log back in.");
                     return;
                 }
 
                 const user = JSON.parse(userStr);
                 const currentUserId = String(user.id || user._id);
-                setUserId(currentUserId);
+                if (isMounted) setUserId(currentUserId);
 
-                const projRes = await projectApi.getMyProjects();
-                setProjects(projRes.data.data || []);
+                try {
+                    const projRes = await projectApi.getMyProjects();
+                    if (isMounted) setProjects(projRes.data.data || []);
+                } catch (e) {
+                    console.warn('Failed to load projects for chat', e);
+                }
 
                 const chatClient = StreamChat.getInstance(apiKey);
 
-                if (chatClient.userID !== currentUserId) {
-                    if (chatClient.userID) await chatClient.disconnectUser();
-                    await chatClient.connectUser(
-                        { id: currentUserId, name: user.name || user.email || 'Admin' },
-                        streamToken
-                    );
+                if (chatClient.userID === currentUserId) {
+                    if (isMounted) setClient(chatClient);
+                    return;
                 }
 
-                setClient(chatClient);
+                if (chatClient.userID) {
+                    await chatClient.disconnectUser();
+                }
+
+                if (!isMounted) return;
+
+                await chatClient.connectUser(
+                    { id: currentUserId, name: user.name || user.email || 'Admin', role: 'user' },
+                    streamToken
+                );
+
+                if (isMounted) setClient(chatClient);
             } catch (err) {
-                setInitError(err.message || "Failed to initialize workspace chat.");
+                console.error('Admin chat init error:', err);
+                if (isMounted) setInitError(err.message || "Failed to initialize workspace chat.");
+            } finally {
+                isConnecting.current = false;
             }
         };
 
         initChat();
+
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     const filters = useMemo(() => {
@@ -376,7 +402,7 @@ const ChatInterface = () => {
                 }
                 @keyframes spin { 100% { transform: rotate(360deg); } }
             `}</style>
-            
+
             <div style={{ height: 'calc(100vh - 120px)', width: '100%', display: 'flex', borderRadius: '16px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px rgba(14, 165, 233, 0.05)', background: '#ffffff' }}>
                 <Chat client={client} theme="str-chat__theme-light">
                     <WhatsappChatLayout projects={projects} filters={filters} sort={sort} />
