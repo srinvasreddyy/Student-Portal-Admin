@@ -1,14 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, FolderKanban, MessageSquare, LogOut, Menu, X, ShieldCheck } from 'lucide-react';
-import { authApi } from '../services/api';
+import { LayoutDashboard, FolderKanban, MessageSquare, LogOut, Menu, X, ShieldCheck, Search, Bell } from 'lucide-react';
+import { authApi, notificationApi } from '../services/api';
 
 const DashboardLayout = () => {
     // Default open on desktop, closed on mobile
     const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [notifications, setNotifications] = useState([]);
+    const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
     const navigate = useNavigate();
+
+    // Fetch notifications
+    useEffect(() => {
+        const fetchNotifications = async () => {
+            try {
+                const res = await notificationApi.getNotifications({ limit: 10 });
+                if (res.data?.success) {
+                    setNotifications(res.data.data);
+                }
+            } catch (err) {
+                console.error('Failed to fetch notifications:', err);
+            }
+        };
+        fetchNotifications();
+    }, []);
+
+    const unreadCount = notifications.filter(n => !n.read).length;
+
+    const handleMarkAsRead = async () => {
+        const unreadIds = notifications.filter(n => !n.read).map(n => n._id);
+        if (unreadIds.length === 0) return;
+
+        try {
+            await notificationApi.markAsRead({ ids: unreadIds });
+            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        } catch (err) {
+            console.error('Failed to mark notifications as read:', err);
+        }
+    };
 
     useEffect(() => {
         const handleResize = () => {
@@ -39,16 +70,16 @@ const DashboardLayout = () => {
 
     return (
         <div className="dashboard-container" style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-color)', overflow: 'hidden' }}>
-            
+
             {/* Mobile Backdrop Overlay */}
             <AnimatePresence>
                 {isMobile && sidebarOpen && (
-                    <motion.div 
-                        initial={{ opacity: 0 }} 
-                        animate={{ opacity: 1 }} 
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="mobile-overlay" 
-                        onClick={() => setSidebarOpen(false)} 
+                        className="mobile-overlay"
+                        onClick={() => setSidebarOpen(false)}
                     />
                 )}
             </AnimatePresence>
@@ -78,6 +109,10 @@ const DashboardLayout = () => {
                         <FolderKanban size={20} />
                         {sidebarOpen && <span>Projects</span>}
                     </NavLink>
+                    <NavLink to="/dashboard/talent" onClick={closeSidebarMobile} className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                        <Search size={20} />
+                        {sidebarOpen && <span>Talent Search</span>}
+                    </NavLink>
                     <NavLink to="/dashboard/chat" onClick={closeSidebarMobile} className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                         <MessageSquare size={20} />
                         {sidebarOpen && <span>Messages</span>}
@@ -103,6 +138,77 @@ const DashboardLayout = () => {
                             <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Organization Admin</span>
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Dashboard Access</span>
                         </div>
+
+                        {/* Notifications */}
+                        <div className="notification-wrapper" style={{ position: 'relative' }}>
+                            <button
+                                className="notification-btn"
+                                onClick={() => {
+                                    setIsNotificationMenuOpen(!isNotificationMenuOpen);
+                                    if (!isNotificationMenuOpen) {
+                                        handleMarkAsRead();
+                                    }
+                                }}
+                                style={{
+                                    background: 'none', border: 'none', cursor: 'pointer',
+                                    position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    padding: '0.5rem', borderRadius: '50%', color: 'var(--text-primary)',
+                                    transition: 'background 0.2s'
+                                }}
+                            >
+                                <Bell size={20} />
+                                {unreadCount > 0 && (
+                                    <span style={{
+                                        position: 'absolute', top: '2px', right: '2px',
+                                        background: 'var(--error)', color: 'white',
+                                        fontSize: '0.65rem', fontWeight: 'bold',
+                                        minWidth: '16px', height: '16px', borderRadius: '50%',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                    </span>
+                                )}
+                            </button>
+
+                            <AnimatePresence>
+                                {isNotificationMenuOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="notification-dropdown glass"
+                                    >
+                                        <div style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <h3 style={{ fontSize: '1rem', margin: 0 }}>Notifications</h3>
+                                        </div>
+                                        <div style={{ maxHeight: '300px', overflowY: 'auto' }} className="scrollbar-custom">
+                                            {notifications.length > 0 ? (
+                                                notifications.map(notif => (
+                                                    <div key={notif._id} style={{
+                                                        padding: '1rem', borderBottom: '1px solid #f1f5f9',
+                                                        background: notif.read ? 'transparent' : 'rgba(14, 165, 233, 0.05)',
+                                                        transition: 'background 0.2s',
+                                                        textAlign: 'left'
+                                                    }}>
+                                                        <h4 style={{ fontSize: '0.875rem', marginBottom: '0.25rem', color: 'var(--text-primary)' }}>{notif.title}</h4>
+                                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>{notif.body}</p>
+                                                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.5rem', display: 'block' }}>
+                                                            {new Date(notif.createdAt).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                                                    No notifications yet
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
                         <div className="avatar">A</div>
                     </div>
                 </header>

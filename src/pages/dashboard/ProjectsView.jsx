@@ -137,6 +137,7 @@ const ProjectsView = () => {
 // ----------------------------------------------------------------------------------------------------
 const ProjectDetails = ({ project, onUpdate }) => {
     const [selectedStudent, setSelectedStudent] = useState(null);
+    const [showCompleteModal, setShowCompleteModal] = useState(false);
 
     if (!project) return <div>Loading project details...</div>;
 
@@ -157,15 +158,8 @@ const ProjectDetails = ({ project, onUpdate }) => {
         }
     };
 
-    const handleComplete = async () => {
-        if(window.confirm('Are you sure you want to mark this project as completed? This will grant portfolio entries to all active participants.')) {
-            try {
-                await projectApi.completeProject(project._id);
-                onUpdate();
-            } catch (err) {
-                alert(`Error: ${err.response?.data?.message || 'Failed to complete project'}`);
-            }
-        }
+    const handleComplete = () => {
+        setShowCompleteModal(true);
     };
 
     const handleDownload = async (fileId, fileName) => {
@@ -194,7 +188,7 @@ const ProjectDetails = ({ project, onUpdate }) => {
                 .details-grid { grid-template-columns: 1fr 1fr; }
                 @media (max-width: 1024px) { .details-grid { grid-template-columns: 1fr; } }
             `}</style>
-            
+
             <div className="glass" style={{ padding: '2rem', borderRadius: '16px', background: '#ffffff', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
                     <div style={{ flex: 1 }}>
@@ -211,9 +205,9 @@ const ProjectDetails = ({ project, onUpdate }) => {
                         )}
                     </div>
                 </div>
-                
+
                 <p style={{ color: 'var(--text-secondary)', lineHeight: '1.7', marginBottom: '2rem', whiteSpace: 'pre-wrap', fontSize: '1rem' }}>{project.description}</p>
-                
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.25rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                         <div style={{ background: '#e0f2fe', padding: '0.75rem', borderRadius: '10px', color: '#0ea5e9' }}><Clock size={24} /></div>
@@ -239,6 +233,22 @@ const ProjectDetails = ({ project, onUpdate }) => {
                         </div>
                     )}
                 </div>
+
+                {/* Project Links (shown for completed projects) */}
+                {project.status === 'completed' && (project.sourceCodeUrl || project.productionUrl) && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem', padding: '1.25rem', background: '#ecfdf5', borderRadius: '12px', border: '1px solid #d1fae5' }}>
+                        {project.sourceCodeUrl && (
+                            <a href={project.sourceCodeUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#047857', textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem' }}>
+                                <Code size={18} /> Source Code
+                            </a>
+                        )}
+                        {project.productionUrl && (
+                            <a href={project.productionUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0369a1', textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem' }}>
+                                <LinkIcon size={18} /> Production Link
+                            </a>
+                        )}
+                    </div>
+                )}
 
                 {project.projectDocuments && project.projectDocuments.length > 0 && (
                     <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
@@ -276,7 +286,7 @@ const ProjectDetails = ({ project, onUpdate }) => {
                             </div>
                         </div>
                     )}
-                    
+
                     {project.techStack && project.techStack.length > 0 && (
                         <div>
                             <strong style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}><Code size={16} /> Tech Stack</strong>
@@ -339,8 +349,88 @@ const ProjectDetails = ({ project, onUpdate }) => {
 
             <AnimatePresence>
                 {selectedStudent && <StudentProfileModal studentId={selectedStudent} onClose={() => setSelectedStudent(null)} />}
+                {showCompleteModal && <CompleteProjectModal projectId={project._id} onClose={() => setShowCompleteModal(false)} onSuccess={() => { setShowCompleteModal(false); onUpdate(); }} />}
             </AnimatePresence>
         </div>
+    );
+};
+
+// ----------------------------------------------------------------------------------------------------
+// COMPLETE PROJECT MODAL (Source Code & Production Links)
+// ----------------------------------------------------------------------------------------------------
+const CompleteProjectModal = ({ projectId, onClose, onSuccess }) => {
+    const [sourceCodeUrl, setSourceCodeUrl] = useState('');
+    const [productionUrl, setProductionUrl] = useState('');
+    const [completing, setCompleting] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!sourceCodeUrl.trim()) return;
+        setCompleting(true);
+        try {
+            await projectApi.completeProject(projectId, { sourceCodeUrl: sourceCodeUrl.trim(), productionUrl: productionUrl.trim() || undefined });
+            onSuccess();
+        } catch (err) {
+            alert(`Error: ${err.response?.data?.message || 'Failed to complete project'}`);
+        }
+        setCompleting(false);
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={onClose}
+            style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+        >
+            <motion.div
+                initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+                onClick={e => e.stopPropagation()}
+                style={{ width: '100%', maxWidth: '520px', background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 24px 50px rgba(0,0,0,0.12)' }}
+            >
+                <div style={{ background: 'linear-gradient(135deg, #10b981, #0ea5e9)', padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                        <h2 style={{ color: '#fff', margin: 0, fontSize: '1.25rem', fontFamily: 'Outfit, sans-serif' }}>
+                            <CheckCircle2 size={20} style={{ verticalAlign: 'middle', marginRight: '0.5rem' }} />
+                            Complete Project
+                        </h2>
+                        <p style={{ color: 'rgba(255,255,255,0.85)', margin: '0.3rem 0 0', fontSize: '0.85rem' }}>
+                            This will grant portfolio entries to all participants.
+                        </p>
+                    </div>
+                    <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', cursor: 'pointer', padding: '0.4rem', borderRadius: '8px', display: 'flex' }}><X size={20} /></button>
+                </div>
+
+                <form onSubmit={handleSubmit} style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Source Code URL *</label>
+                        <input
+                            type="url" required value={sourceCodeUrl} onChange={e => setSourceCodeUrl(e.target.value)}
+                            placeholder="https://github.com/org/project"
+                            style={{ width: '100%', padding: '0.875rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', fontFamily: 'inherit' }}
+                            onFocus={e => e.target.style.borderColor = '#10b981'}
+                            onBlur={e => e.target.style.borderColor = '#cbd5e1'}
+                        />
+                    </div>
+                    <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Production URL <span style={{ fontWeight: 400, color: '#94a3b8' }}>(optional)</span></label>
+                        <input
+                            type="url" value={productionUrl} onChange={e => setProductionUrl(e.target.value)}
+                            placeholder="https://my-project.example.com"
+                            style={{ width: '100%', padding: '0.875rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', fontFamily: 'inherit' }}
+                            onFocus={e => e.target.style.borderColor = '#10b981'}
+                            onBlur={e => e.target.style.borderColor = '#cbd5e1'}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', paddingTop: '0.5rem' }}>
+                        <button type="button" onClick={onClose} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+                        <button type="submit" disabled={completing} style={{ padding: '0.75rem 2rem', borderRadius: '8px', background: completing ? '#94a3b8' : 'linear-gradient(135deg, #10b981, #0ea5e9)', border: 'none', color: '#fff', cursor: completing ? 'default' : 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)' }}>
+                            <CheckCircle2 size={16} /> {completing ? 'Completing...' : 'Complete Project'}
+                        </button>
+                    </div>
+                </form>
+            </motion.div>
+        </motion.div>
     );
 };
 
@@ -394,7 +484,7 @@ const CreateProjectModal = ({ onClose, onSuccess }) => {
 
             await projectApi.create(payload);
             onSuccess();
-        } catch (error) { setErrorMsg(error.response?.data?.message || error.message || 'Failed to create project'); } 
+        } catch (error) { setErrorMsg(error.response?.data?.message || error.message || 'Failed to create project'); }
         finally { setLoading(false); }
     };
 
@@ -441,12 +531,12 @@ const CreateProjectModal = ({ onClose, onSuccess }) => {
                             <h4 style={{ fontSize: '1rem', marginBottom: '1.25rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Video size={18} color="var(--primary)" /> Video Resource <span style={{ color: '#94a3b8', fontWeight: 'normal', fontSize: '0.85rem' }}>(Optional)</span></h4>
                             <div className="modal-grid-2">
                                 <div>
-                                    <label style={{...labelStyle, fontSize: '0.8rem'}}>Tag / Label</label>
-                                    <input className="form-input" type="text" placeholder="e.g. Overview Demo" style={{...inputStyle, padding: '0.6rem 0.8rem'}} value={formData.videoTag} onChange={e => setFormData({ ...formData, videoTag: e.target.value })} />
+                                    <label style={{ ...labelStyle, fontSize: '0.8rem' }}>Tag / Label</label>
+                                    <input className="form-input" type="text" placeholder="e.g. Overview Demo" style={{ ...inputStyle, padding: '0.6rem 0.8rem' }} value={formData.videoTag} onChange={e => setFormData({ ...formData, videoTag: e.target.value })} />
                                 </div>
                                 <div>
-                                    <label style={{...labelStyle, fontSize: '0.8rem'}}>Video URL</label>
-                                    <input className="form-input" type="url" placeholder="https://youtube.com/..." style={{...inputStyle, padding: '0.6rem 0.8rem'}} value={formData.videoUrl} onChange={e => setFormData({ ...formData, videoUrl: e.target.value })} />
+                                    <label style={{ ...labelStyle, fontSize: '0.8rem' }}>Video URL</label>
+                                    <input className="form-input" type="url" placeholder="https://youtube.com/..." style={{ ...inputStyle, padding: '0.6rem 0.8rem' }} value={formData.videoUrl} onChange={e => setFormData({ ...formData, videoUrl: e.target.value })} />
                                 </div>
                             </div>
                         </div>
@@ -461,11 +551,11 @@ const CreateProjectModal = ({ onClose, onSuccess }) => {
                                         <button type="button" onClick={() => handleRemoveDoc(idx)} style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', background: '#fee2e2', border: '1px solid #fca5a5', color: '#ef4444', cursor: 'pointer', padding: '0.4rem', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}><Trash2 size={16} /></button>
                                         <div className="modal-grid-2" style={{ marginBottom: '1rem', paddingRight: '3rem' }}>
                                             <div>
-                                                <label style={{...labelStyle, fontSize: '0.8rem'}}>Resource Tag</label>
+                                                <label style={{ ...labelStyle, fontSize: '0.8rem' }}>Resource Tag</label>
                                                 <input className="form-input" type="text" placeholder="e.g. API Docs" style={{ ...inputStyle, padding: '0.6rem 0.8rem' }} value={doc.tag} onChange={e => handleDocChange(idx, 'tag', e.target.value)} />
                                             </div>
                                             <div>
-                                                <label style={{...labelStyle, fontSize: '0.8rem'}}>Resource Type</label>
+                                                <label style={{ ...labelStyle, fontSize: '0.8rem' }}>Resource Type</label>
                                                 <select className="form-input" style={{ ...inputStyle, padding: '0.6rem 0.8rem', cursor: 'pointer' }} value={doc.type} onChange={e => handleDocChange(idx, 'type', e.target.value)}>
                                                     <option value="link">External Link</option>
                                                     <option value="upload">File Upload</option>
@@ -475,12 +565,12 @@ const CreateProjectModal = ({ onClose, onSuccess }) => {
                                         <div>
                                             {doc.type === 'link' ? (
                                                 <>
-                                                    <label style={{...labelStyle, fontSize: '0.8rem'}}>Link URL</label>
+                                                    <label style={{ ...labelStyle, fontSize: '0.8rem' }}>Link URL</label>
                                                     <input className="form-input" type="url" placeholder="https://..." style={{ ...inputStyle, padding: '0.6rem 0.8rem' }} value={doc.url} onChange={e => handleDocChange(idx, 'url', e.target.value)} />
                                                 </>
                                             ) : (
                                                 <>
-                                                    <label style={{...labelStyle, fontSize: '0.8rem'}}>File Attachment</label>
+                                                    <label style={{ ...labelStyle, fontSize: '0.8rem' }}>File Attachment</label>
                                                     <input type="file" style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px dashed #cbd5e1', borderRadius: '8px', background: '#f8fafc', color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }} onChange={e => handleDocChange(idx, 'file', e.target.files[0])} />
                                                 </>
                                             )}
@@ -507,7 +597,7 @@ const CreateProjectModal = ({ onClose, onSuccess }) => {
 const UpdateMediaModal = ({ project, onClose, onSuccess }) => {
     const [videoTag, setVideoTag] = useState(project.video?.tag || project.videoUrl ? 'Project Video' : '');
     const [videoUrl, setVideoUrl] = useState(project.video?.url || project.videoUrl || '');
-    
+
     const [docs, setDocs] = useState(
         (project.projectDocuments || []).map(doc => ({
             tag: doc.tag || '',
@@ -515,10 +605,10 @@ const UpdateMediaModal = ({ project, onClose, onSuccess }) => {
             url: doc.url || '',
             fileId: doc.fileId,
             fileName: doc.fileName,
-            file: null 
+            file: null
         }))
     );
-    
+
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
 
@@ -552,7 +642,7 @@ const UpdateMediaModal = ({ project, onClose, onSuccess }) => {
 
             await projectApi.updateMedia(project._id, payload);
             onSuccess();
-        } catch (error) { setErrorMsg(error.response?.data?.message || error.message || 'Failed to update resources'); } 
+        } catch (error) { setErrorMsg(error.response?.data?.message || error.message || 'Failed to update resources'); }
         finally { setLoading(false); }
     };
 
@@ -566,19 +656,19 @@ const UpdateMediaModal = ({ project, onClose, onSuccess }) => {
                 </div>
                 <div style={{ padding: '2rem', overflowY: 'auto', flex: 1 }} className="scrollbar-custom">
                     {errorMsg && <div style={{ padding: '1rem', background: '#fee2e2', border: '1px solid #fca5a5', color: '#b91c1c', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '500' }}><AlertCircle size={18} /> {errorMsg}</div>}
-                    
+
                     <form id="update-media-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-                        
+
                         {/* Video Editing Card */}
                         <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                             <h4 style={{ fontSize: '1rem', marginBottom: '1.25rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Video size={18} color="var(--primary)" /> Video Resource</h4>
                             <div className="modal-grid-2">
                                 <div>
-                                    <label style={{...labelStyle, fontSize: '0.8rem'}}>Tag / Label</label>
+                                    <label style={{ ...labelStyle, fontSize: '0.8rem' }}>Tag / Label</label>
                                     <input className="form-input" type="text" placeholder="e.g. Overview Demo" style={{ ...inputStyle, padding: '0.6rem 0.8rem' }} value={videoTag} onChange={e => setVideoTag(e.target.value)} />
                                 </div>
                                 <div>
-                                    <label style={{...labelStyle, fontSize: '0.8rem'}}>Video URL</label>
+                                    <label style={{ ...labelStyle, fontSize: '0.8rem' }}>Video URL</label>
                                     <input className="form-input" type="url" placeholder="https://youtube.com/..." style={{ ...inputStyle, padding: '0.6rem 0.8rem' }} value={videoUrl} onChange={e => setVideoUrl(e.target.value)} />
                                 </div>
                             </div>
@@ -594,14 +684,14 @@ const UpdateMediaModal = ({ project, onClose, onSuccess }) => {
                                 {docs.map((doc, idx) => (
                                     <div key={idx} style={{ background: '#ffffff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0', position: 'relative', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
                                         <button type="button" onClick={() => handleRemoveDoc(idx)} style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', background: '#fee2e2', border: '1px solid #fca5a5', color: '#ef4444', cursor: 'pointer', padding: '0.4rem', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}><Trash2 size={16} /></button>
-                                        
+
                                         <div className="modal-grid-2" style={{ marginBottom: '1rem', paddingRight: '3rem' }}>
                                             <div>
-                                                <label style={{...labelStyle, fontSize: '0.8rem'}}>Resource Tag</label>
+                                                <label style={{ ...labelStyle, fontSize: '0.8rem' }}>Resource Tag</label>
                                                 <input className="form-input" type="text" placeholder="e.g. API Docs" style={{ ...inputStyle, padding: '0.6rem 0.8rem' }} value={doc.tag} onChange={e => handleDocChange(idx, 'tag', e.target.value)} />
                                             </div>
                                             <div>
-                                                <label style={{...labelStyle, fontSize: '0.8rem'}}>Resource Type</label>
+                                                <label style={{ ...labelStyle, fontSize: '0.8rem' }}>Resource Type</label>
                                                 <select className="form-input" style={{ ...inputStyle, padding: '0.6rem 0.8rem', cursor: 'pointer' }} value={doc.type} onChange={e => handleDocChange(idx, 'type', e.target.value)} disabled={doc.fileId}>
                                                     <option value="link">External Link</option>
                                                     <option value="upload">File Upload</option>
@@ -612,12 +702,12 @@ const UpdateMediaModal = ({ project, onClose, onSuccess }) => {
                                         <div>
                                             {doc.type === 'link' ? (
                                                 <>
-                                                    <label style={{...labelStyle, fontSize: '0.8rem'}}>Link URL</label>
+                                                    <label style={{ ...labelStyle, fontSize: '0.8rem' }}>Link URL</label>
                                                     <input className="form-input" type="url" placeholder="https://..." style={{ ...inputStyle, padding: '0.6rem 0.8rem' }} value={doc.url} onChange={e => handleDocChange(idx, 'url', e.target.value)} />
                                                 </>
                                             ) : (
                                                 <>
-                                                    <label style={{...labelStyle, fontSize: '0.8rem'}}>File Attachment</label>
+                                                    <label style={{ ...labelStyle, fontSize: '0.8rem' }}>File Attachment</label>
                                                     {doc.fileId ? (
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', color: '#047857' }}>
                                                             <FileCheck2 size={20} color="#10b981" />

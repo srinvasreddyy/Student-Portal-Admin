@@ -290,7 +290,6 @@ const ChatInterface = () => {
     const [userId, setUserId] = useState(null);
     const [initError, setInitError] = useState(null);
     const [projects, setProjects] = useState([]);
-    const isConnecting = useRef(false);
 
     useEffect(() => {
         if (!apiKey) {
@@ -299,10 +298,7 @@ const ChatInterface = () => {
         }
 
         let isMounted = true;
-
-        // Guard against double-init from React 18 StrictMode
-        if (isConnecting.current) return;
-        isConnecting.current = true;
+        const chatClient = StreamChat.getInstance(apiKey);
 
         const initChat = async () => {
             try {
@@ -325,30 +321,23 @@ const ChatInterface = () => {
                     console.warn('Failed to load projects for chat', e);
                 }
 
-                const chatClient = StreamChat.getInstance(apiKey);
-
-                if (chatClient.userID === currentUserId) {
-                    if (isMounted) setClient(chatClient);
-                    return;
-                }
-
-                if (chatClient.userID) {
+                if (chatClient.userID && chatClient.userID !== currentUserId) {
                     await chatClient.disconnectUser();
                 }
 
-                if (!isMounted) return;
+                if (!chatClient.userID) {
+                    await chatClient.connectUser(
+                        { id: currentUserId, name: user.name || user.email || 'Admin', role: 'user' },
+                        streamToken
+                    );
+                }
 
-                await chatClient.connectUser(
-                    { id: currentUserId, name: user.name || user.email || 'Admin', role: 'user' },
-                    streamToken
-                );
-
-                if (isMounted) setClient(chatClient);
+                if (isMounted) {
+                    setClient(chatClient);
+                }
             } catch (err) {
                 console.error('Admin chat init error:', err);
                 if (isMounted) setInitError(err.message || "Failed to initialize workspace chat.");
-            } finally {
-                isConnecting.current = false;
             }
         };
 
@@ -356,6 +345,9 @@ const ChatInterface = () => {
 
         return () => {
             isMounted = false;
+            if (chatClient) {
+                chatClient.disconnectUser();
+            }
         };
     }, []);
 

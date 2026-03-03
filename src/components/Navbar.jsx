@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Layout, Building2, GraduationCap, Github } from 'lucide-react';
+import { Layout, Building2, GraduationCap } from 'lucide-react';
 
 const Navbar = () => {
     const location = useLocation();
@@ -28,9 +28,6 @@ const Navbar = () => {
                 </div>
 
                 <div className="nav-actions">
-                    <a href="https://github.com" target="_blank" rel="noreferrer" className="github-link">
-                        <Github size={20} />
-                    </a>
                 </div>
             </div>
         </nav>

@@ -57,7 +57,7 @@ export const projectApi = {
     acceptStudent: (id, studentRef) => api.post(`/projects/${id}/accept`, { studentRef }),
     removeStudent: (id, studentRef) => api.post(`/projects/${id}/remove`, { studentRef }),
     rejectApplicant: (id, studentRef, reason) => api.post(`/projects/${id}/reject`, { studentRef, reason }),
-    completeProject: (id) => api.post(`/projects/${id}/complete`),
+    completeProject: (id, data = {}) => api.post(`/projects/${id}/complete`, data),
     cancelProject: (id) => api.delete(`/projects/${id}`),
     getMyProjects: () => api.get('/projects/me')
 };
@@ -78,6 +78,19 @@ export const universityApi = {
     getGlobalList: (q) => api.get('/api/university/global-list', { params: { q } }),
     verifyDomain: (data) => api.post('/api/university/verify-domain', data),
     register: (data) => api.post('/api/university/register', data)
+};
+
+export const adminApi = {
+    searchPortfolios: (params, page = 1, limit = 12) => api.get('/admin/portfolios/search', { params: { ...params, page, limit } }),
+    searchStudents: (params, page = 1, limit = 12) => api.get('/admin/students/search', { params: { ...params, page, limit } }),
+    sendRecruitmentEmail: (data) => api.post('/admin/recruitment/send-email', data),
+    getStudentProfile: (userId) => api.get(`/students/${userId}/profile`),
+    getStudentPortfolio: (userId) => api.get(`/students/${userId}/portfolio`),
+};
+
+export const notificationApi = {
+    getNotifications: (params) => api.get('/api/notifications', { params }),
+    markAsRead: (data) => api.post('/api/notifications/mark-read', data)
 };
 
 export default api;

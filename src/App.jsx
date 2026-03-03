@@ -9,6 +9,7 @@ import DashboardLayout from './components/DashboardLayout';
 import Overview from './pages/dashboard/Overview';
 import ProjectsView from './pages/dashboard/ProjectsView';
 import ChatInterface from './pages/dashboard/ChatInterface';
+import TalentSearch from './pages/dashboard/TalentSearch';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
             <Route element={<DashboardLayout />}>
               <Route index element={<Overview />} />
               <Route path="projects" element={<ProjectsView />} />
+              <Route path="talent" element={<TalentSearch />} />
               <Route path="chat" element={<ChatInterface />} />
             </Route>
           </Route>
