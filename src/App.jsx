@@ -17,7 +17,7 @@ function App() {
       <div className="app-container">
         <Routes>
           {/* Public Routes with Navbar */}
-          <Route path="/" element={<><Navbar /><main><Home /></main></>} />
+          <Route path="/" element={<main><Home /></main>} />
           <Route path="/company/*" element={<><Navbar /><main><CompanyAuth /></main></>} />
           <Route path="/university/*" element={<><Navbar /><main><UniversityAuth /></main></>} />
 

@@ -689,6 +689,7 @@ const StudentDetailPanel = ({ student, portfolio, onBack, onEmailClick }) => (
   >
     {/* Header */}
     <div
+      className="student-detail-header"
       style={{
         display: "flex",
         justifyContent: "space-between",
@@ -707,6 +708,7 @@ const StudentDetailPanel = ({ student, portfolio, onBack, onEmailClick }) => (
             background: "#fff",
             cursor: "pointer",
             display: "flex",
+            flexShrink: 0,
           }}
         >
           <ArrowLeft size={18} />
@@ -726,6 +728,7 @@ const StudentDetailPanel = ({ student, portfolio, onBack, onEmailClick }) => (
               margin: "0.2rem 0 0",
               color: "var(--text-secondary)",
               fontSize: "0.9rem",
+              wordBreak: "break-all",
             }}
           >
             {student.email}
@@ -733,6 +736,7 @@ const StudentDetailPanel = ({ student, portfolio, onBack, onEmailClick }) => (
         </div>
       </div>
       <button
+        className="mobile-full-width-btn"
         onClick={() => onEmailClick(student)}
         style={{
           padding: "0.75rem 1.5rem",
@@ -1129,6 +1133,7 @@ const StudentDetailPanel = ({ student, portfolio, onBack, onEmailClick }) => (
 /* ═══════════ MAIN TALENT SEARCH PAGE ═══════════ */
 const TalentSearch = () => {
   const [activeTab, setActiveTab] = useState("portfolios"); // 'portfolios' | 'students'
+  const [isMobile] = useState(window.innerWidth < 768);
 
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState({
@@ -1285,6 +1290,10 @@ const TalentSearch = () => {
       <style>{`
                 @media (max-width: 768px) {
                     .talent-results-grid { grid-template-columns: 1fr !important; }
+                    .mobile-full-width-btn { width: 100% !important; justify-content: center !important; }
+                    .student-detail-header { flex-direction: column !important; align-items: stretch !important; }
+                    .search-btn-mobile { width: 100% !important; justify-content: center !important; }
+                    .search-input-mobile-wrapper { flex: 1 1 100% !important; }
                 }
             `}</style>
 
@@ -1400,7 +1409,7 @@ const TalentSearch = () => {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "minmax(250px, 300px) 1fr",
+              gridTemplateColumns: isMobile ? "1fr" : "minmax(250px, 300px) 1fr",
               gap: "2rem",
               alignItems: "flex-start",
             }}
@@ -1412,8 +1421,8 @@ const TalentSearch = () => {
                 border: "1px solid #e2e8f0",
                 borderRadius: "16px",
                 padding: "1.5rem",
-                position: "sticky",
-                top: "2rem",
+                position: isMobile ? "static" : "sticky",
+                top: isMobile ? "auto" : "2rem",
               }}
             >
               <h3
@@ -1698,6 +1707,7 @@ const TalentSearch = () => {
                 }}
               >
                 <div
+                  className="search-input-mobile-wrapper"
                   style={{ flex: 1, minWidth: "250px", position: "relative" }}
                 >
                   <Search
@@ -1729,6 +1739,7 @@ const TalentSearch = () => {
                       transition: "all 0.2s",
                       background: "#fff",
                       fontFamily: "inherit",
+                      minWidth: 0,
                     }}
                     onFocus={(e) => {
                       e.target.style.borderColor = "#0ea5e9";
@@ -1744,6 +1755,7 @@ const TalentSearch = () => {
                 <button
                   type="submit"
                   disabled={loading}
+                  className="search-btn-mobile"
                   style={{
                     padding: "0.875rem 2rem",
                     borderRadius: "12px",
@@ -1760,6 +1772,7 @@ const TalentSearch = () => {
                     gap: "0.5rem",
                     boxShadow: "0 4px 14px rgba(14, 165, 233, 0.3)",
                     transition: "all 0.2s",
+                    flexShrink: 0,
                   }}
                 >
                   <Search size={16} /> {loading ? "Searching..." : "Search"}
